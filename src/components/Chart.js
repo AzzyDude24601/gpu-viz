@@ -127,6 +127,7 @@ class Chart extends React.Component {
                 },
                 plotOptions: {
                     series: {
+                        lineWidth: 1,
                         point: {
                             events: {
                                 //mouseOver: this.setHoverData.bind(this)
@@ -166,23 +167,20 @@ class Chart extends React.Component {
             workloads: [],
             shownRuns: [],
             hiddenSeries: [],
-            smoothing: 0
+            smoothing: 0,
+            showDetailedTooltip: false, 
+            monochromeMode: false
 		}; 
 
         this.chartRef = React.createRef();
         this.handleShowRunsSwitch = (workloadId) => (event) => this.toggleShownRuns(workloadId, event);
 	}
     componentDidMount() {
-        // get initial list of all normal workload ID's for rendering
-        const workloads = [];
-        this.props.chartData.data.forEach(run => {
-            if (run.workload.substring(run.workload.indexOf("-") + 1) !== "null") {
-                if (workloads.indexOf(run.workload) === -1) {
-                    workloads.push(run.workload);
-                }       
-            }
-        })
-        this.setState({workloads: workloads});
+
+        // only show workload ID's which contain more than 1 run in Toggle Run section
+        const workloads = this.props.chartData.data.map(run => run.workload);
+        const nonUnique = [...new Set(workloads.filter((item,i) => workloads.includes(item, i+1)))];
+        this.setState({workloads: nonUnique});
 
         // generate series
         if (this.props.chartData.context) {
@@ -236,7 +234,7 @@ class Chart extends React.Component {
         return tooltipData;
     }
 
-    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, showDetailedTooltip = false) {
+    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries) {
 
         //console.log("Generating..."); // debugging
         const data = newChartData.data;
@@ -247,13 +245,11 @@ class Chart extends React.Component {
         data.forEach(run => {
             if (run.data !== undefined) {      
 
-                // prepare for chart title
-                
+                // prepare for chart title    
                 experimentList.add(run.experimentName);
 
-                let workloadId = run.workload;
-
                 // check for ungrouped workloads or unsorted workloads
+                let workloadId = run.workload;
                 if (workloadId.substring(workloadId.indexOf("-") + 1) === "null" || newShownRuns.indexOf(workloadId) > -1) {
                     if (run.letter === null) {
                         const removeNull = workloadId.substring(0, workloadId.indexOf("-"));
@@ -349,6 +345,8 @@ class Chart extends React.Component {
             chartTitle = "Multiple Experiments (" + experimentList.size + ")";
         }
 
+        const showDetailedTooltip = this.state.showDetailedTooltip;
+
         // update state which will update render of chart
         this.setState({
             id: newChartData.id,
@@ -429,6 +427,73 @@ class Chart extends React.Component {
         this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries); 
     }
 
+    handleBoostSwitch(event) {
+        let forceBoost;
+        if (event.currentTarget.checked) {
+            forceBoost = 1;
+        }
+        else {
+            forceBoost = 0;
+        }
+        this.setState({
+            options: {
+                navigator: {
+                    boostThreshold: forceBoost,     
+                },
+                plotOptions: {
+                    series: {
+                        boostThreshold: forceBoost,
+                    },
+                },
+            }
+        });
+    }
+
+    handleDetailedTooltipSwitch(event) {
+        let setDetailedTooltip;
+        if (event.currentTarget.checked) {
+            setDetailedTooltip = true;
+        }
+        else {
+            setDetailedTooltip = false;
+        }
+        this.setState({
+            showDetailedTooltip: setDetailedTooltip,
+            options: {
+                tooltip: {
+                    formatter() {
+                        return Chart.formatTooltip(this, setDetailedTooltip);
+                    }
+                }
+            },
+        });
+    }
+
+    handleMonochromeModeSwitch(event) {
+
+        let setMonochromeMode;
+        if (event.currentTarget.checked) {
+            setMonochromeMode = true;
+        }
+        else {
+            setMonochromeMode = false;
+        }
+
+        const seriesCount = (this.chartRef.current.chart.series.length - 1) / 2;
+        if (seriesCount <= 5) {
+            this.setState({
+                monochromeMode: setMonochromeMode
+            })         
+        }
+        else {
+            this.setState({
+                monochromeMode: false
+            })  
+            alert("Monochrome mode incomptible with more than 5 series.")
+        }
+        
+    }
+
     render() {
         const { data, options, id, workloads, smoothing } = this.state;
         return (
@@ -447,10 +512,6 @@ class Chart extends React.Component {
                     ref={ this.chartRef }
                     callback={this.afterChartCreated}
                 />          
-                <Slider 
-                    onSetSmoothness={this.applySmoothness.bind(this)}
-                    defaultValue={smoothing}
-                />
                 <div id="workloadGroupingControlsWrapper">
                     Toggle Runs:
                     {workloads.map(workload => (
@@ -466,6 +527,43 @@ class Chart extends React.Component {
                         </div>        
                     ))}
                 </div>
+                <Slider 
+                    onSetSmoothness={this.applySmoothness.bind(this)}
+                    defaultValue={smoothing}
+                />
+                <div id="exportOptionsWrapper">
+                    <div>
+                        Detailed Tooltip: <label className="switch">
+                            <input 
+                                type="checkbox" 
+                                //checked="checked"
+                                onChange={this.handleDetailedTooltipSwitch.bind(this)} 
+                            />
+                            <span className="slider round"></span>
+                        </label>
+                    </div>
+                    <div>
+                        Boost Chart: <label className="switch">
+                            <input 
+                                type="checkbox" 
+                                //checked="checked"
+                                onChange={this.handleBoostSwitch.bind(this)} 
+                            />
+                            <span className="slider round"></span>
+                        </label>
+                    </div> 
+                    <div>
+                        Monochrome Mode: <label className="switch">
+                            <input 
+                                type="checkbox" 
+                                //checked="checked"
+                                onChange={this.handleMonochromeModeSwitch.bind(this)} 
+                                checked={this.state.monochromeMode}
+                            />
+                            <span className="slider round"></span>
+                        </label>
+                    </div>   
+                </div>           
                 {/*}
                 <div id="chartMetadataWrapper">
                     {data.map(series => (
