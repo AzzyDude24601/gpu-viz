@@ -128,11 +128,6 @@ class Chart extends React.Component {
                 plotOptions: {
                     series: {
                         lineWidth: 1,
-                        point: {
-                            events: {
-                                //mouseOver: this.setHoverData.bind(this)
-                            }
-                        },
                         boostThreshold: 0,
                         marker: {
                             radius: 1
@@ -156,7 +151,7 @@ class Chart extends React.Component {
                             ]]
                         },
                         events: {
-                            //legendItemClick: this.toggleSeriesVisibility.bind(this)
+                            legendItemClick: this.toggleSeriesVisibility.bind(this)
                         }
                     },
                 },
@@ -235,6 +230,8 @@ class Chart extends React.Component {
     }
 
     generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries) {
+
+        console.log(newHiddenSeries);
 
         //console.log("Generating..."); // debugging
         const data = newChartData.data;
