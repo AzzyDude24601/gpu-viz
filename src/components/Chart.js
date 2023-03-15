@@ -127,7 +127,7 @@ class Chart extends React.Component {
                 },
                 plotOptions: {
                     series: {
-                        lineWidth: 1,
+                        lineWidth: 0.5,
                         boostThreshold: 0,
                         marker: {
                             radius: 1
@@ -180,11 +180,11 @@ class Chart extends React.Component {
         // generate series
         if (this.props.chartData.context) {
             // with local uploaded settings 
-            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries); 
+            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries, this.state.monochromeMode); 
         }   
         else {
             // with default settings (e.g. no smoothing and combined as workloads)
-            this.generateSeries(this.props.chartData, 0, [], []); 
+            this.generateSeries(this.props.chartData, 0, [], [], this.state.monochromeMode); 
         }
     }
 
@@ -229,9 +229,7 @@ class Chart extends React.Component {
         return tooltipData;
     }
 
-    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries) {
-
-        console.log(newHiddenSeries);
+    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, monoMode) {
 
         //console.log("Generating..."); // debugging
         const data = newChartData.data;
@@ -303,8 +301,13 @@ class Chart extends React.Component {
             series.data.sort((a, b) => a[0] - b[0]);
         });
 
-        // subtract earliest time from all timestamps to get ms passed
+        // styling for monochrome mode
+        let monoSeriesCounter = 0;
+        const dashStyles = ["Solid", "Solid", "Solid ", "Dot", "LongDash"];
+        const monoColors = ["#000000", "#cccccc", "#7f7f7f ", "#999999", "#666666"];
+
         allSeries.forEach(series => {
+            // subtract earliest time from all timestamps to get ms passed
             const earliestTime = series.data[0][0];
             series.data.forEach(timeAndValue => {
                 timeAndValue[0] = timeAndValue[0] - earliestTime;
@@ -324,6 +327,19 @@ class Chart extends React.Component {
                     series.visible = false;
                 }
             })
+
+            // update series styles/colors for for monochrome mode
+            if (monoMode) {
+                series.dashStyle = dashStyles[monoSeriesCounter];
+                series.color = monoColors[monoSeriesCounter];
+            }
+            else {
+                series.dashStyle = "solid";
+                series.color = null;
+                series.colorIndex = monoSeriesCounter;
+            }
+            monoSeriesCounter++;
+
         });
 
         // apply smoothing to each series if over zero
@@ -348,7 +364,7 @@ class Chart extends React.Component {
         this.setState({
             id: newChartData.id,
             data: newChartData.data,
-            options: {
+            options: { 
                 title: {
                     text: chartTitle
                 },
@@ -359,7 +375,8 @@ class Chart extends React.Component {
                 },
                 series: allSeries,
                 navigator: {
-                    series: allSeries
+                    series: allSeries,
+                    //enabled: !monoMode,
                 },
                 tooltip: {
                     formatter() {
@@ -370,6 +387,7 @@ class Chart extends React.Component {
             shownRuns: newShownRuns,
             hiddenSeries: newHiddenSeries,
             smoothing: newSmoothing,
+            monochromeMode: monoMode,
             loading: false
         });
               
@@ -377,7 +395,7 @@ class Chart extends React.Component {
 
     applySmoothness(smoothing) { 
         if (smoothing !== this.state.smoothing) {
-            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries);
+            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.monochromeMode);
         }
     }
 
@@ -395,7 +413,7 @@ class Chart extends React.Component {
                 shownRuns.splice(workloadIdIndex, 1);
             }
         }
-        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries);
+        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, false);
     }
 
     toggleSeriesVisibility(event) {
@@ -421,7 +439,7 @@ class Chart extends React.Component {
         }
 
         // update chart and state
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries); 
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.monochromeMode); 
     }
 
     handleBoostSwitch(event) {
@@ -435,7 +453,7 @@ class Chart extends React.Component {
         this.setState({
             options: {
                 navigator: {
-                    boostThreshold: forceBoost,     
+                    //boostThreshold: forceBoost,     
                 },
                 plotOptions: {
                     series: {
@@ -467,7 +485,6 @@ class Chart extends React.Component {
     }
 
     handleMonochromeModeSwitch(event) {
-
         let setMonochromeMode;
         if (event.currentTarget.checked) {
             setMonochromeMode = true;
@@ -475,24 +492,23 @@ class Chart extends React.Component {
         else {
             setMonochromeMode = false;
         }
-
         const seriesCount = (this.chartRef.current.chart.series.length - 1) / 2;
         if (seriesCount <= 5) {
-            this.setState({
-                monochromeMode: setMonochromeMode
-            })         
+
+            console.log("Setting mono mode to " + setMonochromeMode);
+
+            this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, setMonochromeMode);
         }
         else {
             this.setState({
                 monochromeMode: false
             })  
             alert("Monochrome mode incomptible with more than 5 series.")
-        }
-        
+        }  
     }
 
     render() {
-        const { data, options, id, workloads, smoothing } = this.state;
+        const { options, id, workloads, smoothing } = this.state;
         return (
             <div className="chartWrapper">
                 <button 

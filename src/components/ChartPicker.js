@@ -86,7 +86,7 @@ class ChartPicker extends React.Component {
 
 		// update chart context state
 		const newChartsContextData = [];
-		newCharts.map(chart => {
+		newCharts.forEach(chart => {
 			const newChartContextData = {
 				id: chart.id,
 				smoothing: 0,
@@ -135,7 +135,7 @@ class ChartPicker extends React.Component {
 		// console.log("Syncing..."); // debugging
 
 		const newChartsContextData = [...this.state.chartsContextData];
-		newChartsContextData.map(chart => {
+		newChartsContextData.forEach(chart => {
 			if (chart.id === id) {
 				chart.smoothing = newSmoothing;
 				chart.shownRuns = newShownRuns;
@@ -182,8 +182,8 @@ class ChartPicker extends React.Component {
 		const localChartData = [...uploadedData[0]];
 		const localChartContext = [...uploadedData[1]];
 
-		localChartData.map(chart => {
-			localChartContext.map(context => {
+		localChartData.forEach(chart => {
+			localChartContext.forEach(context => {
 				if (chart.id === context.id) {
 					chart.id = new Date();
 					chart.context = {

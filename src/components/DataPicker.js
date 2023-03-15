@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
 import { HTTP } from '../api';
 import '../styles/DataPicker.css';
 
@@ -170,7 +170,7 @@ class DataPicker extends React.Component {
 
 		// check if any selected runs are in local storage
 		const localRunsAndWorkloadData = pullFromLocalStorage();
-		if (localRunsAndWorkloadData.runData != undefined && localRunsAndWorkloadData.workloadData != undefined) {
+		if (localRunsAndWorkloadData.runData !== undefined && localRunsAndWorkloadData.workloadData !== undefined) {
 			this.setState({
 				selectedWorkloads: localRunsAndWorkloadData.workloadData,
 				selectedRuns: localRunsAndWorkloadData.runData
@@ -328,7 +328,7 @@ function Runs(props) {
 					<span className={checkRunStatus(run.status)} title={run.status.charAt(0) + run.status.substring(1).toLowerCase()}>•</span>
 					<span className="letter" title="Identifier">{run.letter === null || run.letter === "0" ? run.name.substring(0,6) : run.letter}</span>
 					<div className="checkbox">{props.selectedRuns.findIndex(el => el.name === run.name) > -1 ? "✔" : " "}</div>
-					<span className="info" title={"𝗠𝗼𝗱𝗲𝗹: " + run.model + "\n" + "𝗦𝗼𝘂𝗿𝗰𝗲: " + run.source + "\n" + "𝗣𝗮𝗿𝗮𝗺𝘀: " + run.params}>i</span>
+					<span className="info" title={"𝗠𝗼𝗱𝗲𝗹: " + run.model + "\n𝗦𝗼𝘂𝗿𝗰𝗲: " + run.source + "\n𝗣𝗮𝗿𝗮𝗺𝘀: " + run.params}>i</span>
 					<span className={`duration ${run.duration === null ? "noDuration" : ""}`} title="Duration">{milliToMinsSecs(run.duration)}</span>	
 
 				</button>
@@ -450,10 +450,10 @@ function pullFromLocalStorage() {
 	
 	// combine and return it
 	const runsAndWorkloadData = [];
-	if (runData != null) {
+	if (runData !== null) {
 		runsAndWorkloadData.runData = runData;
 	}
-	if (workloadData != null) {
+	if (workloadData !== null) {
 		runsAndWorkloadData.workloadData = workloadData;
 	}
 	return runsAndWorkloadData;
