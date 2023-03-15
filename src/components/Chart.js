@@ -21,7 +21,8 @@ class Chart extends React.Component {
                             align: 'left',
                             x: 0,
                             y: -5,
-                            verticalAlign: 'top'
+                            verticalAlign: 'top',
+                            menuItems: ["viewFullscreen", "printChart", "separator", "downloadPNG", "downloadJPEG", "downloadPDF", "downloadSVG", "separator", "downloadCSV"]
                         }
                     },
                     scale: 3,
@@ -43,7 +44,7 @@ class Chart extends React.Component {
                 },
                 xAxis: {
                     events: {
-                        setExtremes: function(event){
+                        setExtremes: function(event) {
                             if (!this.zoomButton) {
                                 const chart = this.chart;
                                 this.zoomButton = chart.renderer.button('Reset Zoom', null, null, function() {
@@ -65,7 +66,8 @@ class Chart extends React.Component {
                                     this.zoomButton = null;
                                 }                      
                             }
-                        }
+                        },
+                        afterSetExtremes: this.handleAfterSetExtremes.bind(this)
                     },
                     ordinal: false,
                     type: "datetime",
@@ -127,7 +129,7 @@ class Chart extends React.Component {
                 },
                 plotOptions: {
                     series: {
-                        lineWidth: 0.5,
+                        lineWidth: 0.8,
                         boostThreshold: 0,
                         marker: {
                             radius: 1
@@ -163,6 +165,7 @@ class Chart extends React.Component {
             shownRuns: [],
             hiddenSeries: [],
             smoothing: 0,
+            range: {min: 0, max: 0},
             showDetailedTooltip: false, 
             monochromeMode: false
 		}; 
@@ -170,6 +173,7 @@ class Chart extends React.Component {
         this.chartRef = React.createRef();
         this.handleShowRunsSwitch = (workloadId) => (event) => this.toggleShownRuns(workloadId, event);
 	}
+
     componentDidMount() {
 
         // only show workload ID's which contain more than 1 run in Toggle Run section
@@ -190,8 +194,8 @@ class Chart extends React.Component {
 
     // sync contextual chart information to ChartPicker parent for local downloading
     componentDidUpdate(prevProps, prevState) {
-        if (prevState.smoothing !== this.state.smoothing || prevState.shownRuns.length !== this.state.shownRuns.length || prevState.hiddenSeries.length !== this.state.hiddenSeries.length) {     
-            this.props.pullChartExtras(this.state.id, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries);
+        if (prevState.smoothing !== this.state.smoothing || prevState.shownRuns.length !== this.state.shownRuns.length || prevState.hiddenSeries.length !== this.state.hiddenSeries.length || prevState.range.min != this.state.range.min || prevState.range.max != this.state.range.max) {     
+            this.props.pullChartExtras(this.state.id, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range);
         }
     }
 
@@ -258,8 +262,7 @@ class Chart extends React.Component {
                             workloadId = workloadId + " " + run.letter + " (" + run.name.substring(0, 5) + ")";
                         }             
                     }   
-                } 
-
+                }
 
                 // add all runs to one series per workload, unless they are unsorted runs
                 const seriesIndex = allSeries.findIndex(series => series.id === workloadId);
@@ -358,7 +361,23 @@ class Chart extends React.Component {
             chartTitle = "Multiple Experiments (" + experimentList.size + ")";
         }
 
+        // check if should be detailed tooltip
         const showDetailedTooltip = this.state.showDetailedTooltip;
+
+
+        console.log(this.state.range); // debugging
+
+        let minRange = this.state.range.min;
+        let maxRange = this.state.range.max;
+        if (minRange < 1) {
+            minRange = null;
+        }
+        if (maxRange < 1) {
+            maxRange = null;
+        }
+        
+
+
 
         // update state which will update render of chart
         this.setState({
@@ -367,6 +386,10 @@ class Chart extends React.Component {
             options: { 
                 title: {
                     text: chartTitle
+                },
+                xAxis: {
+                    min: minRange,
+                    max: maxRange
                 },
                 yAxis: {
                     title: {
@@ -494,17 +517,20 @@ class Chart extends React.Component {
         }
         const seriesCount = (this.chartRef.current.chart.series.length - 1) / 2;
         if (seriesCount <= 5) {
-
-            console.log("Setting mono mode to " + setMonochromeMode);
-
             this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, setMonochromeMode);
         }
         else {
             this.setState({
                 monochromeMode: false
             })  
-            alert("Monochrome mode incomptible with more than 5 series.")
+            alert("Monochrome mode incompatible with more than 5 series.")
         }  
+    }
+
+    handleAfterSetExtremes = (event) => {
+        const newRange = {min: event.min, max: event.max}
+        this.setState({range: newRange});
+        console.log(newRange); // debugging
     }
 
     render() {

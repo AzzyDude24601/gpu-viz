@@ -130,7 +130,7 @@ class ChartPicker extends React.Component {
 	}
 
 	// update custom chart state for local data download
-	syncData(id, newSmoothing, newShownRuns, newHiddenSeries) {
+	syncData(id, newSmoothing, newShownRuns, newHiddenSeries, newRange) {
 
 		// console.log("Syncing..."); // debugging
 
@@ -139,7 +139,8 @@ class ChartPicker extends React.Component {
 			if (chart.id === id) {
 				chart.smoothing = newSmoothing;
 				chart.shownRuns = newShownRuns;
-				chart.hiddenSeries = newHiddenSeries;			
+				chart.hiddenSeries = newHiddenSeries;		
+				chart.range = newRange;
 			}
 		})
 		this.setState({
@@ -185,17 +186,21 @@ class ChartPicker extends React.Component {
 		localChartData.forEach(chart => {
 			localChartContext.forEach(context => {
 				if (chart.id === context.id) {
-					chart.id = new Date();
+					chart.id = new Date().getTime();
 					chart.context = {
 						smoothing: context.smoothing,
 						shownRuns: context.shownRuns,
-						hiddenSeries: context.hiddenSeries
+						hiddenSeries: context.hiddenSeries, 
+						range: context.range
 					};	
 				}		
 			})
 		})
 	
 		const newCharts = [...localChartData, ...this.state.charts];
+
+		console.log(newCharts);
+
 		this.setCharts(newCharts);
 	}
 
