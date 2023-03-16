@@ -21,6 +21,30 @@ class DataPicker extends React.Component {
 		this.bottomOfScrollRef = React.createRef();
 	}
 
+	componentDidMount() {
+
+		// fetch data to populate pickers
+		this.fetchExperiments();
+		this.fetchRuns();
+
+		// check if any selected runs are in local storage
+		const localRunsAndWorkloadData = pullFromLocalStorage();
+		if (localRunsAndWorkloadData.runData !== undefined && localRunsAndWorkloadData.workloadData !== undefined) {
+			this.setState({
+				selectedWorkloads: localRunsAndWorkloadData.workloadData,
+				selectedRuns: localRunsAndWorkloadData.runData
+			});
+			this.props.pullSelectedRuns(localRunsAndWorkloadData.runData);
+		}
+	}
+	
+	componentDidUpdate(prevProps, prevState) {
+		// scroll to bottom of list when adding selections, but not removing
+		if (this.state.selectedWorkloads.length > prevState.selectedWorkloads.length) {
+			this.bottomOfScrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+		}
+	}
+
 	// fetch all experiemnts 
 	async fetchExperiments() {
 		const data = await HTTP.fetchExperiments();
@@ -161,30 +185,6 @@ class DataPicker extends React.Component {
 			submitToLocalStorage([], []);
 		}
 	}
-
-	componentDidMount() {
-
-		// fetch data to populate pickers
-		this.fetchExperiments();
-		this.fetchRuns();
-
-		// check if any selected runs are in local storage
-		const localRunsAndWorkloadData = pullFromLocalStorage();
-		if (localRunsAndWorkloadData.runData !== undefined && localRunsAndWorkloadData.workloadData !== undefined) {
-			this.setState({
-				selectedWorkloads: localRunsAndWorkloadData.workloadData,
-				selectedRuns: localRunsAndWorkloadData.runData
-			});
-			this.props.pullSelectedRuns(localRunsAndWorkloadData.runData);
-		}
-	}
-
-	componentDidUpdate(prevProps, prevState) {
-		// scroll to bottom of list when adding selections, but not removing
-		if (this.state.selectedWorkloads.length > prevState.selectedWorkloads.length) {
-			this.bottomOfScrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-		}
-	  }
 
 	render() {
 
