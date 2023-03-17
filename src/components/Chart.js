@@ -200,6 +200,7 @@ class Chart extends React.Component {
         }
     }
 
+    // format detailed tooltip if it is enabled
     static formatTooltip(tooltip, toShow) {
 
         const xAxisTitle = tooltip.series.xAxis.axisTitle.textStr;
@@ -234,6 +235,7 @@ class Chart extends React.Component {
         return tooltipData;
     }
 
+    // takes the run data, parses it to an object Highcharts can render, and applies it to state (which will auto-update the chart)
     generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, newRange, monoMode) {
 
         //console.log("Generating..."); // debugging
@@ -412,12 +414,14 @@ class Chart extends React.Component {
               
     }
 
+    // updates smoothness state 
     handleSetSmoothness(smoothing) { 
         if (smoothing !== this.state.smoothing) {
             this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode);
         }
     }
 
+    // controls which workloads show their runs
     toggleShownRuns(workloadId, event) {
         const toAdd = event.target.checked;
         const shownRuns = [...this.state.shownRuns];
@@ -435,6 +439,7 @@ class Chart extends React.Component {
         this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, this.state.range, false);
     }
 
+    // controls the series visibility after the legend item is clicked
     toggleSeriesVisibility(event) {
         // prevent default highcharts behaviour
         event.preventDefault();
@@ -461,6 +466,7 @@ class Chart extends React.Component {
         this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.range, this.state.monochromeMode); 
     }
 
+    // controls the boost setting
     handleBoostSwitch(event) {
         let forceBoost;
         let menuItems;
@@ -495,6 +501,7 @@ class Chart extends React.Component {
         });
     }
 
+    // controls the detailed tooltip setting
     handleDetailedTooltipSwitch(event) {
         const setDetailedTooltip = event.currentTarget.checked;
         this.setState({
@@ -509,6 +516,7 @@ class Chart extends React.Component {
         });
     }
 
+    // controls the monochrome setting
     handleMonochromeModeSwitch(event) {
         let setMonochromeMode;
         if (event.currentTarget.checked) {
@@ -529,11 +537,13 @@ class Chart extends React.Component {
         }  
     }
 
+    // records the range (zoom) setting so it is saved when you download/upload charts
     handleAfterSetExtremes = (event) => {
         const newRange = {min: event.min, max: event.max}
         this.setState({range: newRange});
     }
 
+    // controls the line width setting
     handleSetLineWidth(newLineWidth) { 
         newLineWidth = parseFloat(newLineWidth);
         this.setState({
@@ -566,7 +576,7 @@ class Chart extends React.Component {
                     ref={ this.chartRef }
                     callback={this.afterChartCreated}
                 />          
-                <div id="workloadGroupingControlsWrapper">
+                <div id="workloadGroupingControlsWrapper" className={workloads.length === 0 ? "hide" : null}>
                     Toggle Runs:
                     {workloads.map(workload => (
                         <div key={workload}>
