@@ -319,7 +319,7 @@ function Runs(props) {
 
 	return (
 		<div id="runsWrapper">
-			{props.data.slice().sort((a, b) => a.startTime - b.startTime).map(run => (
+			{props.data.slice().sort((a, b) => b.startTime - a.startTime).map(run => (
 				<button 
 					key={run.name} 
 					onClick={() => props.onClickToggleRunSelection(run.workload, run)}
@@ -327,10 +327,10 @@ function Runs(props) {
 				>
 					<span className={checkRunStatus(run.status)} title={run.status.charAt(0) + run.status.substring(1).toLowerCase()}>•</span>
 					<span className="letter" title="Identifier">{run.letter === null || run.letter === "0" ? run.name.substring(0,6) : run.letter}</span>
+					<span className="startTime" title="Start time">({howLongAgo(run.startTime)})</span>
 					<div className="checkbox">{props.selectedRuns.findIndex(el => el.name === run.name) > -1 ? "✔" : " "}</div>
 					<span className="info" title={"𝗠𝗼𝗱𝗲𝗹: " + run.model + "\n𝗦𝗼𝘂𝗿𝗰𝗲: " + run.source + "\n𝗣𝗮𝗿𝗮𝗺𝘀: " + run.params}>i</span>
-					<span className={`duration ${run.duration === null ? "noDuration" : ""}`} title="Duration">{milliToMinsSecs(run.duration)}</span>	
-
+					<span className={`duration ${run.duration === null ? "noDuration" : ""}`} title="Duration">{milliToMinsSecs(run.duration)}</span>
 				</button>
 			))}
 		</div>
@@ -424,6 +424,66 @@ function milliToMinsSecs(ms) {
         label = new Date(ms).toISOString().slice(11, 19);
     }
     return label;
+}
+function howLongAgo(startTime) {
+
+	console.log(Date.now() + "-" + startTime + " = " )
+
+	let howLongAgo; 
+
+	let diffTime = Date.now() - startTime;
+	let years = diffTime / (365*24*60*60*1000);
+	let days = diffTime / (24*60*60*1000);
+	let hours = (days % 1) * 24;
+	let minutes = (hours % 1) * 60;
+	let secs = (minutes % 1) * 60;
+	[years, days, hours, minutes, secs] = [Math.floor(years), Math.floor(days), Math.floor(hours), Math.floor(minutes), Math.floor(secs)];
+
+	if (years > 0) {
+		if (years === 1) {
+			howLongAgo = years + " year ago";
+		}
+		else {
+			howLongAgo = years + " years ago";
+		}
+	}
+	else if (days > 0) {
+		if (days === 1) {
+			howLongAgo = days + " day ago";
+		}
+		else {
+			howLongAgo = days + " days ago";
+		}
+	}
+	else if (hours > 0) {
+		if (hours === 1) {
+			howLongAgo = hours + " hour ago";
+		}
+		else {
+			howLongAgo = hours + " hours ago";
+		}
+	}
+	else if (minutes > 0) {
+		if (minutes === 1) {
+			howLongAgo = minutes + " minute ago";
+		}
+		else {
+			howLongAgo = minutes + " minutes ago";
+		}
+	}
+	else if (secs > 0) {
+		if (secs === 1) {
+			howLongAgo = secs + " second ago";
+		}
+		else {
+			howLongAgo = secs + " seconds ago";
+		}
+	}
+	else {
+		howLongAgo = "N/A";
+	}
+
+	return howLongAgo;
 }
 function submitToLocalStorage(workloadData, runData) {
 
