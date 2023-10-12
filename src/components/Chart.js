@@ -169,7 +169,7 @@ class Chart extends React.Component {
             showDetailedTooltip: false,
             monochromeMode: false,
             startAtFirst: false,
-            useStep: false,
+            useStep: "Time",
             boostMode: true,
             chartLineWidth: 1.0
         };
@@ -192,7 +192,7 @@ class Chart extends React.Component {
         }
         else {
             // with default settings (e.g. no smoothing and combined as workloads)
-            this.generateSeries(this.props.chartData, 0, [], [], { min: 0, max: 0 }, false, false, false);
+            this.generateSeries(this.props.chartData, 0, [], [], { min: 0, max: 0 }, false, false, "Time");
         }
     }
 
@@ -287,9 +287,18 @@ class Chart extends React.Component {
                     delete metadata.data;
                     newSeries.custom.runs.push(metadata);
 
-                    if (useStep) {
+                    // add data points, time or epoch
+                    if (useStep !== "Time") {
                         run.data.forEach(data => {
-                            newSeries.data.push([data.step, data.value]);
+                            let foundIndex = newSeries.data.findIndex(function (a) {
+                                return a[0] === data.step;
+                            });
+
+                            if (foundIndex < 0) {
+                                newSeries.data.push([data.step, [data.value]]);
+                            } else {
+                                newSeries.data[foundIndex][1].push(data.value);
+                            }
                         })
                     } else {
                         run.data.forEach(data => {
@@ -300,9 +309,18 @@ class Chart extends React.Component {
                 }
                 else {
 
-                    if (useStep) {
+                    // add data points, time or epoch
+                    if (useStep !== "Time") {
                         run.data.forEach(data => {
-                            allSeries[seriesIndex].data.push([data.step, data.value]);
+                            let foundIndex = allSeries[seriesIndex].data.findIndex(function (a) {
+                                return a[0] === data.step;
+                            });
+
+                            if (foundIndex < 0) {
+                                allSeries[seriesIndex].data.push([data.step, [data.value]]);
+                            } else {
+                                allSeries[seriesIndex].data[foundIndex][1].push(data.value);
+                            }
                         })
                     } else {
                         run.data.forEach(data => {
@@ -323,6 +341,32 @@ class Chart extends React.Component {
             series.data.sort((a, b) => a[0] - b[0]);
         });
 
+        // convert epoch lists into singular data points
+        if (useStep !== "Time") {
+            //#Source https://bit.ly/2neWfJ2 
+            const median = arr => {
+                const mid = Math.floor(arr.length / 2),
+                    nums = [...arr].sort((a, b) => a - b);
+                return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+            };
+
+            allSeries.forEach(series => {
+                series.data.forEach(dataPoint => {
+                    if (useStep === "Epoch Min") {
+                        dataPoint[1] = Math.min(...dataPoint[1]);
+                    } else if (useStep === "Epoch Max") {
+                        dataPoint[1] = Math.max(...dataPoint[1]);
+                    } else if (useStep === "Epoch Mean") {
+                        const sum = dataPoint[1].reduce((a, b) => a + b, 0);
+                        const avg = (sum / dataPoint[1].length) || 0;
+                        dataPoint[1] = avg;
+                    } else if (useStep === "Epoch Median") {
+                        dataPoint[1] = median(dataPoint[1]);
+                    }
+                });
+            });
+        }
+
         // styling for monochrome mode
         let monoSeriesCounter = 0;
         const dashStyles = ["Solid", "Solid", "Solid ", "Dot", "LongDash"];
@@ -331,7 +375,7 @@ class Chart extends React.Component {
         allSeries.forEach(series => {
             // subtract earliest time from all timestamps to get ms passed
 
-            if (!useStep) {
+            if (useStep === "Time") {
                 let earliestTime = 0
                 if (startAtFirst) {
                     earliestTime = series.data[0][0];
@@ -408,7 +452,7 @@ class Chart extends React.Component {
         let xAxisFormatter = function () {
             return (milliToMinsSecs(this.value))
         };
-        if (useStep) {
+        if (useStep !== "Time") {
             xAxisTitle = "Epoch";
             xAxisType = "linear";
             xAxisFormatter = function () {
@@ -484,7 +528,7 @@ class Chart extends React.Component {
                 shownRuns.splice(workloadIdIndex, 1);
             }
         }
-        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, this.state.range, false, false, false);
+        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, this.state.range, false, false, "Time");
     }
 
     // controls the series visibility after the legend item is clicked
@@ -597,16 +641,9 @@ class Chart extends React.Component {
         this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, setStartAtFirst, this.state.useStep);
     }
 
-    // controls whether to use time or steps
-    handleUseStepSwitch(event) {
-        let setUseStep;
-        if (event.currentTarget.checked) {
-            setUseStep = true;
-        }
-        else {
-            setUseStep = false;
-        }
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, { min: 0, max: 0 }, this.state.monochromeMode, this.state.startAtFirst, setUseStep);
+    // controls xaxis mode
+    handleUseStepSwitch(object) {
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, { min: 0, max: 0 }, this.state.monochromeMode, this.state.startAtFirst, object.currentTarget.value);
     }
 
     // records the range (zoom) setting so it is saved when you download/upload charts
@@ -699,16 +736,6 @@ class Chart extends React.Component {
                             <span className="slider round"></span>
                         </label>
                     </div>
-                    <div title="Whether to use timestamps or steps.">
-                        Epochs: <label className="switch">
-                            <input
-                                type="checkbox"
-                                onChange={this.handleUseStepSwitch.bind(this)}
-                                checked={this.state.useStep}
-                            />
-                            <span className="slider round"></span>
-                        </label>
-                    </div>
                     <div title="Disable boost to adjust Line Width and PDF/SVG export (slower)">
                         Boost Chart: <label className="switch">
                             <input
@@ -724,6 +751,23 @@ class Chart extends React.Component {
                             onSetLineWidth={this.handleSetLineWidth.bind(this)}
                             defaultValue={this.state.chartLineWidth}
                         />
+                    </div>
+                    <div title="Whether to use timestamps or steps.">
+                        x-Axis: <label className="switch">
+                            <select name="steptype" id="usestep" onChange={this.handleUseStepSwitch.bind(this)} >
+                                <option value="Time">Time</option>
+                                <option value="Epoch Min">Epoch Min</option>
+                                <option value="Epoch Max">Epoch Max</option>
+                                <option value="Epoch Mean">Epoch Mean</option>
+                                <option value="Epoch Median">Epoch Median</option>
+                            </select>
+                            {/* <input
+                                type="checkbox"
+                                onChange={this.handleUseStepSwitch.bind(this)}
+                                checked={this.state.useStep}
+                            /> */}
+                            {/* <span className="slider round"></span> */}
+                        </label>
                     </div>
                 </div>
                 {/* DEBUGGING: }
