@@ -208,7 +208,9 @@ class Chart extends React.Component {
         const xAxisTitle = tooltip.series.xAxis.axisTitle.textStr;
         const yAxisTitle = tooltip.series.yAxis.axisTitle.textStr;
 
-        let tooltipData = "<div class='tooltipStyle' style='color:" + tooltip.color + ";'>" + tooltip.series.name + "</div><br /><br/><b>" + yAxisTitle + ":</b> " + tooltip.y + "<br/><b>" + xAxisTitle + ":</b> " + milliToMinsSecs(tooltip.x) + "<br /><br />";
+        // handle multiple x-axis options
+        let xAxisTooltip = ((xAxisTitle === "Time Elapsed") ? milliToMinsSecs(tooltip.x) : tooltip.x);
+        let tooltipData = "<div class='tooltipStyle' style='color:" + tooltip.color + ";'>" + tooltip.series.name + "</div><br /><br/><b>" + yAxisTitle + ":</b> " + tooltip.y + "<br/><b>" + xAxisTitle + ":</b> " + xAxisTooltip + "<br /><br />";
 
         if (toShow) {
             const letters = new Set();
