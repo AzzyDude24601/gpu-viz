@@ -168,7 +168,6 @@ class Chart extends React.Component {
             range: { min: 0, max: 0 },
             showDetailedTooltip: false,
             monochromeMode: false,
-            startAtFirst: false,
             boostMode: true,
             chartLineWidth: 1.0
         };
@@ -187,7 +186,7 @@ class Chart extends React.Component {
         // generate series
         if (this.props.chartData.context) {
             // with local uploaded settings 
-            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries, this.props.chartData.context.range, this.state.monochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries, this.props.chartData.context.range, this.state.monochromeMode);
         }
         else {
             // with default settings (e.g. no smoothing and combined as workloads)
@@ -208,7 +207,7 @@ class Chart extends React.Component {
         const yAxisTitle = tooltip.series.yAxis.axisTitle.textStr;
 
         let tooltipData = "<div class='tooltipStyle' style='color:" + tooltip.color + ";'>" + tooltip.series.name + "</div><br /><br/><b>" + yAxisTitle + ":</b> " + tooltip.y + "<br/><b>" + xAxisTitle + ":</b> " + milliToMinsSecs(tooltip.x) + "<br /><br />";
-
+        console.log(tooltip);
         if (toShow) {
             const letters = new Set();
             const models = new Set();
@@ -237,7 +236,7 @@ class Chart extends React.Component {
     }
 
     // takes the run data, parses it to an object Highcharts can render, and applies it to state (which will auto-update the chart)
-    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, newRange, monoMode, startAtFirst) {
+    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, newRange, monoMode) {
 
         //console.log("Generating..."); // debugging
         const data = newChartData.data;
@@ -274,7 +273,6 @@ class Chart extends React.Component {
 
                     let newSeries = {
                         id: workloadId,
-                        startTime: run.startTime,
                         data: [],
                         custom: {
                             runs: []
@@ -287,13 +285,13 @@ class Chart extends React.Component {
                     newSeries.custom.runs.push(metadata);
 
                     run.data.forEach(data => {
-                        newSeries.data.push([data.timestamp, data.value]);
+                        newSeries.data.push({ x: data.timestamp, y: data.value, epoch: data.step });
                     })
                     allSeries.push(newSeries);
                 }
                 else {
                     run.data.forEach(data => {
-                        allSeries[seriesIndex].data.push([data.timestamp, data.value]);
+                        allSeries[seriesIndex].data.push({ x: data.timestamp, y: data.value, epoch: data.step });
                     })
 
                     // add series (runs) metadata to HC api for tooltip
@@ -316,14 +314,7 @@ class Chart extends React.Component {
 
         allSeries.forEach(series => {
             // subtract earliest time from all timestamps to get ms passed
-            let earliestTime = 0
-            if (startAtFirst) {
-                earliestTime = series.data[0][0];
-            } else {
-                earliestTime = series.startTime;
-            }
-
-
+            const earliestTime = series.data[0][0];
             series.data.forEach(timeAndValue => {
                 timeAndValue[0] = timeAndValue[0] - earliestTime;
             });
@@ -376,7 +367,7 @@ class Chart extends React.Component {
         // check if should be detailed tooltip
         const showDetailedTooltip = this.state.showDetailedTooltip;
 
-        // if range is the deault range, don't specify it for Highcharts API
+        // if range is the default range, don't specify it for Highcharts API
         let minRange = newRange.min;
         let maxRange = newRange.max;
         if (minRange < 1) {
@@ -418,16 +409,19 @@ class Chart extends React.Component {
             hiddenSeries: newHiddenSeries,
             smoothing: newSmoothing,
             monochromeMode: monoMode,
-            startAtFirst: startAtFirst,
             loading: false
         });
+
+        console.log("data done");
+        console.log(data);
+        console.log(this);
 
     }
 
     // updates smoothness state 
     handleSetSmoothness(smoothing) {
         if (smoothing !== this.state.smoothing) {
-            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode);
         }
     }
 
@@ -473,7 +467,7 @@ class Chart extends React.Component {
         }
 
         // update chart and state
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst);
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.range, this.state.monochromeMode);
     }
 
     // controls the boost setting
@@ -537,7 +531,7 @@ class Chart extends React.Component {
         }
         const seriesCount = (this.chartRef.current.chart.series.length - 1) / 2;
         if (seriesCount <= 5) {
-            this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, setMonochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, setMonochromeMode);
         }
         else {
             this.setState({
@@ -545,18 +539,6 @@ class Chart extends React.Component {
             })
             alert("Monochrome mode incompatible with more than 5 series.")
         }
-    }
-
-    // controls the StartAtFirst setting
-    handleStartAtFirstSwitch(event) {
-        let setStartAtFirst;
-        if (event.currentTarget.checked) {
-            setStartAtFirst = true;
-        }
-        else {
-            setStartAtFirst = false;
-        }
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, setStartAtFirst);
     }
 
     // records the range (zoom) setting so it is saved when you download/upload charts
@@ -635,16 +617,6 @@ class Chart extends React.Component {
                                 type="checkbox"
                                 onChange={this.handleMonochromeModeSwitch.bind(this)}
                                 checked={this.state.monochromeMode}
-                            />
-                            <span className="slider round"></span>
-                        </label>
-                    </div>
-                    <div title="Whether to start at the first data entry instead of run start.">
-                        Start on First: <label className="switch">
-                            <input
-                                type="checkbox"
-                                onChange={this.handleStartAtFirstSwitch.bind(this)}
-                                checked={this.state.startAtFirst}
                             />
                             <span className="slider round"></span>
                         </label>
@@ -757,6 +729,7 @@ function calcEMA(series, smoothingWeight) {
     // separate data from timestamps
     let time = series.map(a => a[0]);
     let data = series.map(a => a[1]);
+    let epoch = series.map(a => a[2]);
 
     // first item is just first data item
     let emaData = [data[0]];
@@ -770,7 +743,7 @@ function calcEMA(series, smoothingWeight) {
     // recombine the new EMA array with the timestamp array
     let emaSeries = [];
     for (let i = 0; i < emaData.length; i++) {
-        emaSeries.push([time[i], emaData[i]]);
+        emaSeries.push([time[i], emaData[i], epoch[i]]);
     }
 
     // return final series for highcharts API
