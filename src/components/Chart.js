@@ -169,6 +169,7 @@ class Chart extends React.Component {
             showDetailedTooltip: false,
             monochromeMode: false,
             startAtFirst: false,
+            useStep: false,
             boostMode: true,
             chartLineWidth: 1.0
         };
@@ -187,11 +188,11 @@ class Chart extends React.Component {
         // generate series
         if (this.props.chartData.context) {
             // with local uploaded settings 
-            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries, this.props.chartData.context.range, this.state.monochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, this.props.chartData.context.smoothing, this.props.chartData.context.shownRuns, this.props.chartData.context.hiddenSeries, this.props.chartData.context.range, this.state.monochromeMode, this.state.startAtFirst, this.state.useStep);
         }
         else {
             // with default settings (e.g. no smoothing and combined as workloads)
-            this.generateSeries(this.props.chartData, 0, [], [], { min: 0, max: 0 }, false);
+            this.generateSeries(this.props.chartData, 0, [], [], { min: 0, max: 0 }, false, false, false);
         }
     }
 
@@ -237,7 +238,7 @@ class Chart extends React.Component {
     }
 
     // takes the run data, parses it to an object Highcharts can render, and applies it to state (which will auto-update the chart)
-    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, newRange, monoMode, startAtFirst) {
+    generateSeries(newChartData, newSmoothing, newShownRuns, newHiddenSeries, newRange, monoMode, startAtFirst, useStep) {
 
         //console.log("Generating..."); // debugging
         const data = newChartData.data;
@@ -286,15 +287,28 @@ class Chart extends React.Component {
                     delete metadata.data;
                     newSeries.custom.runs.push(metadata);
 
-                    run.data.forEach(data => {
-                        newSeries.data.push([data.timestamp, data.value]);
-                    })
+                    if (useStep) {
+                        run.data.forEach(data => {
+                            newSeries.data.push([data.step, data.value]);
+                        })
+                    } else {
+                        run.data.forEach(data => {
+                            newSeries.data.push([data.timestamp, data.value]);
+                        })
+                    }
                     allSeries.push(newSeries);
                 }
                 else {
-                    run.data.forEach(data => {
-                        allSeries[seriesIndex].data.push([data.timestamp, data.value]);
-                    })
+
+                    if (useStep) {
+                        run.data.forEach(data => {
+                            allSeries[seriesIndex].data.push([data.step, data.value]);
+                        })
+                    } else {
+                        run.data.forEach(data => {
+                            allSeries[seriesIndex].data.push([data.timestamp, data.value]);
+                        })
+                    }
 
                     // add series (runs) metadata to HC api for tooltip
                     const metadata = { ...run };
@@ -316,17 +330,19 @@ class Chart extends React.Component {
 
         allSeries.forEach(series => {
             // subtract earliest time from all timestamps to get ms passed
-            let earliestTime = 0
-            if (startAtFirst) {
-                earliestTime = series.data[0][0];
-            } else {
-                earliestTime = series.startTime;
+
+            if (!useStep) {
+                let earliestTime = 0
+                if (startAtFirst) {
+                    earliestTime = series.data[0][0];
+                } else {
+                    earliestTime = series.startTime;
+                }
+
+                series.data.forEach(timeAndValue => {
+                    timeAndValue[0] = timeAndValue[0] - earliestTime;
+                });
             }
-
-
-            series.data.forEach(timeAndValue => {
-                timeAndValue[0] = timeAndValue[0] - earliestTime;
-            });
 
             // add name
             series.name = series.id;
@@ -376,7 +392,7 @@ class Chart extends React.Component {
         // check if should be detailed tooltip
         const showDetailedTooltip = this.state.showDetailedTooltip;
 
-        // if range is the deault range, don't specify it for Highcharts API
+        // if range is the default range, don't specify it for Highcharts API
         let minRange = newRange.min;
         let maxRange = newRange.max;
         if (minRange < 1) {
@@ -384,6 +400,20 @@ class Chart extends React.Component {
         }
         if (maxRange < 1) {
             maxRange = null;
+        }
+
+        // allow for toggling x axis
+        let xAxisTitle = "Time Elapsed";
+        let xAxisType = "datetime"
+        let xAxisFormatter = function () {
+            return (milliToMinsSecs(this.value))
+        };
+        if (useStep) {
+            xAxisTitle = "Epoch";
+            xAxisType = "linear";
+            xAxisFormatter = function () {
+                return (this.value)
+            };
         }
 
         // update state which will update render of chart
@@ -395,8 +425,15 @@ class Chart extends React.Component {
                     text: chartTitle
                 },
                 xAxis: {
+                    title: {
+                        text: xAxisTitle,
+                    },
+                    type: xAxisType,
                     min: minRange,
-                    max: maxRange
+                    max: maxRange,
+                    labels: {
+                        formatter: xAxisFormatter,
+                    },
                 },
                 yAxis: {
                     title: {
@@ -419,6 +456,7 @@ class Chart extends React.Component {
             smoothing: newSmoothing,
             monochromeMode: monoMode,
             startAtFirst: startAtFirst,
+            useStep: useStep,
             loading: false
         });
 
@@ -427,7 +465,7 @@ class Chart extends React.Component {
     // updates smoothness state 
     handleSetSmoothness(smoothing) {
         if (smoothing !== this.state.smoothing) {
-            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst, this.state.useStep);
         }
     }
 
@@ -446,7 +484,7 @@ class Chart extends React.Component {
                 shownRuns.splice(workloadIdIndex, 1);
             }
         }
-        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, this.state.range, false);
+        this.generateSeries(this.props.chartData, this.state.smoothing, shownRuns, this.state.hiddenSeries, this.state.range, false, false, false);
     }
 
     // controls the series visibility after the legend item is clicked
@@ -473,7 +511,7 @@ class Chart extends React.Component {
         }
 
         // update chart and state
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst);
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, newHiddenSeries, this.state.range, this.state.monochromeMode, this.state.startAtFirst, this.state.useStep);
     }
 
     // controls the boost setting
@@ -537,7 +575,7 @@ class Chart extends React.Component {
         }
         const seriesCount = (this.chartRef.current.chart.series.length - 1) / 2;
         if (seriesCount <= 5) {
-            this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, setMonochromeMode, this.state.startAtFirst);
+            this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, setMonochromeMode, this.state.startAtFirst, this.state.useStep);
         }
         else {
             this.setState({
@@ -556,7 +594,19 @@ class Chart extends React.Component {
         else {
             setStartAtFirst = false;
         }
-        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, setStartAtFirst);
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, this.state.range, this.state.monochromeMode, setStartAtFirst, this.state.useStep);
+    }
+
+    // controls whether to use time or steps
+    handleUseStepSwitch(event) {
+        let setUseStep;
+        if (event.currentTarget.checked) {
+            setUseStep = true;
+        }
+        else {
+            setUseStep = false;
+        }
+        this.generateSeries(this.props.chartData, this.state.smoothing, this.state.shownRuns, this.state.hiddenSeries, { min: 0, max: 0 }, this.state.monochromeMode, this.state.startAtFirst, setUseStep);
     }
 
     // records the range (zoom) setting so it is saved when you download/upload charts
@@ -645,6 +695,16 @@ class Chart extends React.Component {
                                 type="checkbox"
                                 onChange={this.handleStartAtFirstSwitch.bind(this)}
                                 checked={this.state.startAtFirst}
+                            />
+                            <span className="slider round"></span>
+                        </label>
+                    </div>
+                    <div title="Whether to use timestamps or steps.">
+                        Epochs: <label className="switch">
+                            <input
+                                type="checkbox"
+                                onChange={this.handleUseStepSwitch.bind(this)}
+                                checked={this.state.useStep}
                             />
                             <span className="slider round"></span>
                         </label>
