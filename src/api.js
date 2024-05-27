@@ -51,6 +51,7 @@ export const HTTP = {
                     let workloadId = data["experiment_id"] + "-" + data["workload"];
                     parsed.push({
                         "name": data["run_uuid"],
+                        "runname": data["name"],
                         "experimentId": data["experiment_id"],
                         "duration": data["duration"],
                         "startTime": data["start_time"],

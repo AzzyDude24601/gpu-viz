@@ -257,6 +257,10 @@ class Chart extends React.Component {
                 // check for ungrouped workloads or unsorted workloads
                 let workloadId = run.workload;
                 if (workloadId.substring(workloadId.indexOf("-") + 1) === "null" || newShownRuns.indexOf(workloadId) > -1) {
+                    // if (run.runname != null) {
+                    //     workloadId = run.runname;
+                    // }
+                    // else {
                     if (run.letter === null) {
                         const removeNull = workloadId.substring(0, workloadId.indexOf("-"));
                         workloadId = removeNull + " (" + run.name.substring(0, 5) + ")";
@@ -269,6 +273,7 @@ class Chart extends React.Component {
                             workloadId = workloadId + " " + run.letter + " (" + run.name.substring(0, 5) + ")";
                         }
                     }
+                    // }
                 }
 
                 // add all runs to one series per workload, unless they are unsorted runs
@@ -338,9 +343,14 @@ class Chart extends React.Component {
             }
         });
 
-        // sort all series by unix timestamp
         allSeries.forEach(series => {
+            // sort all series by unix timestamp
             series.data.sort((a, b) => a[0] - b[0]);
+
+            // apply run naming if singular
+            if (series.custom.runs.length === 1) {
+                series.id = series.custom.runs[0].runname;
+            }
         });
 
         // convert epoch lists into singular data points
